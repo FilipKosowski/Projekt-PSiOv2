@@ -5,6 +5,7 @@
 #include<random>
 #include<ctime>
 #include<algorithm>
+#include <queue>
 
 const int WINDOW_WIDTH = 1180;
 const int WINDOW_HEIGHT = 820;
@@ -92,16 +93,45 @@ tempnamenvm(map, level);
 // cos
 bool levelgenerated = false;
 bool loss = false;
+bool win = false;
+
+void floodReveal(std::vector<std::vector<Cell>>& map, const Difficultylvl& level, int row, int col)
+{
+    std::queue<std::pair<int, int>> q;
+    q.push({row, col});
+
+    while (!q.empty()) {
+        auto [r, c] = q.front();
+        q.pop();
+
+        if (!isinside(r, c, level)) continue;
+        if (map[r][c].revealed || map[r][c].flagged) continue;
+
+        map[r][c].revealed = true;
+
+        if(map[r][c].nearMines!= 0) continue;
+
+        for(int dr = -1; dr <=1 ; dr++){
+            for(int dc = -1; dc <= 1; dc++){
+                if(dr != 0 || dc != 0){
+                    q.push({r+ dr, c + dc});
+                }
+            }
+        }
+    }
+}
 
 
-
-
-
-
-
-
-
-
+bool isWin(const std::vector<std::vector<Cell>>& map, const Difficultylvl& level){
+    for (int r = 0; r < level.rows; r ++){
+        for(int c = 0; c <level.cols; c ++){
+            if(!map[r][c].mine && !map[r][c].revealed) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 int main()
 {
@@ -134,17 +164,23 @@ int main()
                 else if((event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) && playerRow < level.rows - 1) {
                     playerRow++;
                 }
-                if(event.key.code == sf::Keyboard::Space && !loss) {
+                if(event.key.code == sf::Keyboard::Space && !loss && !win) {
                     if(!levelgenerated){
                         generateBoard(map, level, playerRow, playerCol);
                         levelgenerated = true;
                     }
 
                     Cell& s = map[playerRow][playerCol];
-                    s.revealed = true;
+
 
                     if(s.mine){
+                        s.revealed = true;
                         loss = true;
+                    }
+                    else {
+                        floodReveal(map, level, playerRow, playerCol);
+
+                        if(isWin(map, level)) win = true;
                     }
 
                 }
