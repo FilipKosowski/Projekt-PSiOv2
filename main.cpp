@@ -13,6 +13,7 @@ const int WINDOW_HEIGHT = 820;
 
 
 
+
 //colory
 sf::Color TileColor(70, 190 ,100);
 sf::Color TileColorR(70, 90 ,100);
@@ -33,9 +34,6 @@ struct Difficultylvl {
     int mines;
 };
 
-//gracz
-int playerRow = 0;
-int playerCol = 0;
 
 //aby pierwszy ruch byl safe
 bool isinside(int r, int c, const Difficultylvl& level)
@@ -133,18 +131,35 @@ bool isWin(const std::vector<std::vector<Cell>>& map, const Difficultylvl& level
     return true;
 }
 
-int main()
-{
-    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Saper SFML");
-    window.setFramerateLimit(60);
+class SaperGame{
+private:
+    sf::RenderWindow window;
+    std::vector<std::vector<Cell>> map;
+    Difficultylvl level;
 
-    Difficultylvl level{"ez", 9, 9, 10}; // s r c m
-    std::vector<std::vector<Cell>> map(level.rows, std::vector<Cell>(level.cols));
-    //mapa ma level.rows emelentow i kazdy element ma vector o wielkosci level.colls
+    int playerRow = 0;
+    int playerCol = 0;
 
+    bool levelgenerated = false;
+public:
+    SaperGame() :  window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Saper SFML"){
+        window.setFramerateLimit(60);
+    }
 
-
-    while (window.isOpen()){
+    void run(){
+        while (window.isOpen()){
+        handleEvents();
+        draw();
+     }
+    }
+    void setDif(const Difficultylvl& l){
+        level = l;
+    }
+    void setMap(const std::vector<std::vector<Cell>>& m){
+        map = m;
+    }
+private:
+    void handleEvents(){
         sf::Event event {};
 
         while (window.pollEvent(event)) {
@@ -187,6 +202,8 @@ int main()
 
             }
         }
+    }
+    void draw(){
 
         window.clear(sf::Color(0, 0, 0));
         //generowanie mapy
@@ -201,7 +218,7 @@ int main()
 
                 tile.setPosition(startX + c * cellsize, startY + r *cellsize);
                 if(map[r][c].revealed){
-                      tile.setFillColor(TileColorR);
+                    tile.setFillColor(TileColorR);
                 }
                 else  tile.setFillColor(TileColor);
 
@@ -222,7 +239,7 @@ int main()
         //movment
 
 
-//draw mines
+        //draw mines
 
 
         //draw player
@@ -244,6 +261,28 @@ int main()
 
         window.display();
     }
+
+};
+
+int main()
+{
+    SaperGame game;
+
+
+
+    Difficultylvl level{"ez", 9, 9, 10}; // s r c m
+    game.setDif(level);
+
+
+    std::vector<std::vector<Cell>> map(level.rows, std::vector<Cell>(level.cols));
+    //mapa ma level.rows emelentow i kazdy element ma vector o wielkosci level.colls
+    game.setMap(map);
+ game.run();
+
+
+
+
+
 
 
 
