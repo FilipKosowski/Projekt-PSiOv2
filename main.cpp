@@ -218,7 +218,7 @@ private:
     }
     void loadFont()
     {
-        if(font.loadFromFile("C:/Windows/Fonts/arial.tft")){
+        if(font.loadFromFile("C:/Windows/Fonts/arial.ttf")){
             fontLoaded = true;
         }
     }
@@ -242,7 +242,27 @@ private:
         panel.setFillColor(sf::Color(25, 25, 25));
         window.draw(panel);
 
-        ///Dokoncze pozniej
+        drawText("SAPER", 30, 20, 36, sf::Color::White);
+
+        drawText("Level: " + level.name, 230, 30, 24, sf::Color::White);
+
+        int shownTime;
+
+        if(loss || win){
+            shownTime = static_cast<int>(finalTime);
+        }
+        else{
+            shownTime = static_cast<int>(currentTime());
+        }
+        drawText("Time: " + std::to_string(shownTime) + " s", 450, 30, 24, sf::Color::White);
+
+        int minesLeft = level.mines - flagCount();
+        drawText("Mines: " + std::to_string(minesLeft), 650, 30, 24, sf::Color::White);
+
+        drawText("R - restart", 850, 20, 20, sf::Color::White);
+        drawText("ESC - menu", 850, 50, 20, sf::Color::White);
+
+        drawText("Space - reveal  F - flag", 990, 35, 17, sf::Color::Yellow);
     }
     void handleEvents(){
         sf::Event event {};
@@ -384,6 +404,8 @@ private:
         }
 
         window.clear(sf::Color(0, 0, 0));
+
+        drawHud();
         sf::Font font;
         font.loadFromFile("C:/Windows/fonts/arial.ttf");
 
