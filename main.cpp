@@ -7,7 +7,7 @@
 #include<algorithm>
 #include <queue>
 #include <cmath>
-
+#include <sstream>
 
 const int WINDOW_WIDTH = 1180;
 const int WINDOW_HEIGHT = 820;
@@ -141,6 +141,13 @@ private:
     int playerRow = 0;
     int playerCol = 0;
 
+    sf::Font font;
+    bool fontLoaded = false;
+
+    sf::Clock gameClock;
+    bool timerStarted = false;
+    float finalTime = 0.0f;
+
     bool levelgenerated = false;
     bool loss = false;
     bool win = false;
@@ -158,6 +165,7 @@ private:
 public:
     SaperGame() :  window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Saper SFML"), state(menu){
         window.setFramerateLimit(60);
+        loadFont();
     }
 
     void run(){
@@ -168,7 +176,7 @@ public:
     }
     void setDif(const Difficultylvl& l){
         level = l;
-        map.clear();
+        //map.clear();
         map = std::vector<std::vector<Cell>>(level.rows, std::vector<Cell>(level.cols));
         playerRow = 0;
         playerCol = 0;
@@ -177,13 +185,65 @@ public:
         loss = false;
         win = false;
         levelgenerated = false;
-        state = game;
 
+        timerStarted = false;
+        finalTime = 0.0f;
+
+        state = game;
     }
+
     void setMap(const std::vector<std::vector<Cell>>& m){
         map = m;
     }
 private:
+    float currentTime()
+    {
+        if(!timerStarted){
+            return 0.0f;
+        }
+
+        return gameClock.getElapsedTime().asSeconds();
+    }
+    int flagCount(){
+        int counter =0;
+
+        for(int r =0; r < level.rows; r++){
+            for(int c = 0; c < level.cols; c++){
+                if(map[r][c].flagged){
+                    counter++;
+                }
+            }
+        }
+        return counter;
+    }
+    void loadFont()
+    {
+        if(font.loadFromFile("C:/Windows/Fonts/arial.tft")){
+            fontLoaded = true;
+        }
+    }
+    void drawText(const std::string& text, float x, float y, int size, sf::Color color){
+        if(!fontLoaded){
+            return;
+        }
+
+        sf::Text t;
+        t.setFont(font);
+        t.setString(text);
+        t.setCharacterSize(size);
+        t.setFillColor(color);
+        t.setPosition(x, y);
+
+        window.draw(t);
+    }
+    void drawHud(){
+        sf::RectangleShape panel(sf::Vector2f(WINDOW_WIDTH, 90));
+        panel.setPosition(0, 0);
+        panel.setFillColor(sf::Color(25, 25, 25));
+        window.draw(panel);
+
+        ///Dokoncze pozniej
+    }
     void handleEvents(){
         sf::Event event {};
 
@@ -229,6 +289,9 @@ private:
                     if(!levelgenerated){
                         generateBoard(map, level, playerRow, playerCol);
                         levelgenerated = true;
+
+                        timerStarted = true;
+                        gameClock.restart();
                     }
 
                     Cell& s = map[playerRow][playerCol];
@@ -238,13 +301,17 @@ private:
                         if(s.mine){
                             s.revealed = true;
                             loss = true;
+                            finalTime = currentTime();
                         }
                         else {
                             floodReveal(map, level, playerRow, playerCol);
                         }
                     }
 
-                    if(isWin(map, level)) win = true;
+                    if(isWin(map, level)){
+                        win = true;
+                        finalTime = currentTime();
+                    }
                 }
                 // flagowanie pol
                 if(event.key.code == sf::Keyboard::F && !loss && !win){
