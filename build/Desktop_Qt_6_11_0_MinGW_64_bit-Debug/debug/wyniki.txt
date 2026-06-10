@@ -1,1 +1,7 @@
 PRZEGRANA | Tryb: LATWY | Czas: 1 s | Data: 2026-06-09 22:10
+Przegrana | Tryb: Hard | Czas: 2 s
+Przegrana | Tryb: Easy | Czas: 1 s
+Przegrana | Tryb: Easy | Czas: 1 s
+Przegrana | Tryb: Easy | Czas: 3 s
+Przegrana | Tryb: Easy | Czas: 3 s
+Przegrana | Tryb: Medium | Czas: 2 s

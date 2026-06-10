@@ -22,9 +22,11 @@ enum GameState{
 
 
 //colory
-sf::Color TileColor(70, 190 ,100);
-sf::Color TileColorR(70, 90 ,100);
-sf::Color TileOutline(255 ,255,255);
+sf::Color TileColor(69, 90 ,51);
+sf::Color TileColor2(59, 78 ,45);
+sf::Color TileColorR(156, 137 ,92);
+sf::Color TileColorR2(168, 150 ,103);
+sf::Color TileOutline(32 ,38,27);
 sf::Color playerOutline(0, 0, 80);
 
 struct Cell {
@@ -201,6 +203,7 @@ public:
         map = m;
     }
 private:
+
     int boardY()
     {
         return 120;
@@ -278,6 +281,53 @@ private:
         if(font.loadFromFile("C:/Windows/Fonts/arial.ttf")){
             fontLoaded = true;
         }
+    }
+    void drawLine(float x1, float y1, float x2, float y2, sf::Color color, float thickness = 1.0f) {
+        sf::Vector2f p1(x1, y1);
+        sf::Vector2f p2(x2, y2);
+        sf::Vector2f d = p2 - p1;
+        float len = std::sqrt(d.x * d.x + d.y * d.y);
+        if (len == 0) return;
+        sf::RectangleShape line(sf::Vector2f(len, thickness));
+        line.setOrigin(0, thickness / 2.0f);
+        line.setPosition(p1);
+        line.setRotation(std::atan2(d.y, d.x) * 180.0f / 3.14159f);
+        line.setFillColor(color);
+        window.draw(line);
+    }
+
+    void drawSoldierIcon(float x, float y, float size) {
+        sf::CircleShape head(size * 0.14f);
+        head.setOrigin(size * 0.14f, size * 0.14f);
+        head.setPosition(x + size * 0.5f, y + size * 0.28f);
+        head.setFillColor(sf::Color(217, 183, 132));
+        window.draw(head);
+
+        sf::CircleShape helmet(size * 0.18f, 20);
+        helmet.setScale(1.35f, 0.65f);
+        helmet.setOrigin(size * 0.18f, size * 0.18f);
+        helmet.setPosition(x + size * 0.5f, y + size * 0.19f);
+        helmet.setFillColor(sf::Color(45, 75, 38));
+        window.draw(helmet);
+
+        sf::RectangleShape body(sf::Vector2f(size * 0.36f, size * 0.34f));
+        body.setOrigin(size * 0.18f, size * 0.17f);
+        body.setPosition(x + size * 0.5f, y + size * 0.58f);
+        body.setFillColor(sf::Color(53, 86, 43));
+        body.setOutlineThickness(1);
+        body.setOutlineColor(sf::Color(25, 40, 24));
+        window.draw(body);
+
+        drawLine(x + size * 0.66f, y + size * 0.47f, x + size * 0.92f, y + size * 0.37f, sf::Color(40, 30, 20), size * 0.05f);
+        drawLine(x + size * 0.38f, y + size * 0.76f, x + size * 0.34f, y + size * 0.96f, sf::Color(35, 50, 32), size * 0.08f);
+        drawLine(x + size * 0.58f, y + size * 0.76f, x + size * 0.66f, y + size * 0.96f, sf::Color(35, 50, 32), size * 0.08f);
+    }
+
+    void drawSoldier() {
+        int size = cellSize();
+        float x = static_cast<float>(boardX() + playerCol * size);
+        float y = static_cast<float>(boardY() + playerRow * size);
+        drawSoldierIcon(x, y, static_cast<float>(size));
     }
     void drawText(const std::string& text, float x, float y, int size, sf::Color color){
         if(!fontLoaded){
@@ -453,17 +503,38 @@ private:
         int startX = boardX();
         int startY = boardY();
 
+        //generowanie ramki
+        sf::RectangleShape boardFrame(
+            sf::Vector2f(level.cols * cellsize + 20, level.rows * cellsize + 20)
+            );
+        boardFrame.setPosition(startX -10, startY- 10);
+        boardFrame.setFillColor(sf::Color(35,35,35));
+        boardFrame.setOutlineColor(sf::Color(160,160,160));
+        boardFrame.setOutlineThickness(4);
+        window.draw(boardFrame);
 
+        //generowanie planszy
         for(int r =0; r < level.rows; r++) {
             for (int c = 0; c < level.cols; c++){
                 sf::RectangleShape tile(sf::Vector2f(cellsize -2, cellsize -2));
                 tile.setPosition(startX + c * cellsize, startY + r *cellsize);
 
                 if(map[r][c].revealed){
+                    if((r+c)% 2 == 0){
                     tile.setFillColor(TileColorR);
+                    }
+                    else{
+                    tile.setFillColor(TileColorR2);
+                    }
                 }
-                else  tile.setFillColor(TileColor);
-
+                else{
+                    if((r+c)% 2 == 0){
+                        tile.setFillColor(TileColor);
+                    }
+                    else{
+                        tile.setFillColor(TileColor2);
+                    }
+                }
                 tile.setOutlineThickness(1);
                 tile.setOutlineColor(TileOutline);
                 window.draw(tile);
@@ -497,12 +568,8 @@ private:
             }
         }
         //draw player
-        sf::RectangleShape player(sf::Vector2f(cellsize-4, cellsize -4));
-        player.setPosition( startX + playerCol * cellsize +1, startY + playerRow * cellsize +1);
-        player.setFillColor(sf::Color::Transparent);
-        player.setOutlineColor(playerOutline);
-        player.setOutlineThickness(5);
-        window.draw(player);
+
+        drawSoldier();
         //Draw hud po win/loss
         if(loss){
             drawText("Przegrana - R restart, ESC menu", 330, 100, 35, sf::Color::Red);
