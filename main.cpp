@@ -81,7 +81,7 @@ void generateBoard(std::vector<std::vector<Cell>>& map, const Difficultylvl& lev
             }
         }
     }
-
+    //random
     std::random_device rd;
     std::mt19937 rng(rd());
     std::shuffle(positions.begin(), positions.end(), rng);
@@ -191,7 +191,7 @@ public:
 
         state = game;
     }
-
+    // po co to?
     void setMap(const std::vector<std::vector<Cell>>& m){
         map = m;
     }
@@ -203,6 +203,16 @@ private:
         }
 
         return gameClock.getElapsedTime().asSeconds();
+    }
+    void revealAllMines(){
+        for(int r = 0; r < level.rows; r ++){
+            for(int c =0; c <level.cols; c ++){
+                if(map[r][c].mine){
+                    map[r][c].revealed = true;
+                }
+            }
+        }
+
     }
     int flagCount(){
         int counter =0;
@@ -276,12 +286,13 @@ private:
                     if(event.key.code == sf::Keyboard::Num1) setDif(lvls[0]);
                     if(event.key.code == sf::Keyboard::Num2) setDif(lvls[1]);
                     if(event.key.code == sf::Keyboard::Num3) setDif(lvls[2]);
+                    // zamykanie aplikacji pod escape
+                    if(event.key.code == sf::Keyboard::Escape) window.close();
                     return;
                 }
-                if(state != game){
-                    return;
-                }
-                if(loss || win){ // reset gamu
+                // funkcje do restartu lub wyjscia po state != game
+                if(state == lost || state == won){
+
                     if(event.key.code == sf::Keyboard::R){
                         setDif(level);
                     }
@@ -290,7 +301,10 @@ private:
                     }
 
                     return;
-                } // ruchy podczas gry
+                }
+                if(state != game){
+                    return;
+                }              // ruchy podczas gry
                 if((event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A) && playerCol > 0) {
                     playerCol--;
                 }
@@ -316,20 +330,23 @@ private:
 
                     Cell& s = map[playerRow][playerCol];
 
-
+                    // Miny i odkrywanie
                     if(!s.revealed && !s.flagged){
                         if(s.mine){
                             s.revealed = true;
                             loss = true;
+                            state = lost;
                             finalTime = currentTime();
+                            revealAllMines();
                         }
                         else {
                             floodReveal(map, level, playerRow, playerCol);
                         }
                     }
-
+                    // win state set
                     if(isWin(map, level)){
                         win = true;
+                        state = won;
                         finalTime = currentTime();
                     }
                 }
@@ -351,41 +368,14 @@ private:
 
         window.clear(sf::Color(20,20,20));
 
-        sf::Font font;
-        font.loadFromFile("C:/Windows/fonts/arial.ttf");
 
+        drawText("SAPER", 470, 120, 70, sf::Color::White);
+        drawText("1 - Easy 9x9 10m" , 390, 280, 35, sf::Color::Green);
+        drawText("2 - Medium 9x9 10m" , 390, 350, 35, sf::Color::Yellow);
+        drawText("3 - Hard 9x9 10m" , 390, 420, 35, sf::Color::Red);
 
-        sf::Text title;
-        title.setFont(font);
-        title.setString("SAPER MENU");
-        title.setCharacterSize(70);
-        title.setFillColor(sf::Color::White);
-        title.setPosition(470, 120);
-        window.draw(title);
+        drawText("Wybierz poziom trudnosci uzywajac klawiatuyr", 395, 530, 25, sf::Color::White);
 
-        sf::Text option1;
-        option1.setFont(font);
-        option1.setString("1 - Easy 9x9 10m");
-        option1.setCharacterSize(35);
-        option1.setFillColor(sf::Color::Green);
-        option1.setPosition(390, 280);
-        window.draw(option1);
-
-        sf::Text option2;
-        option2.setFont(font);
-        option2.setString("2 - Medium 12x12 25m");
-        option2.setCharacterSize(35);
-        option2.setFillColor(sf::Color::Yellow);
-        option2.setPosition(390, 350);
-        window.draw(option2);
-
-        sf::Text option3;
-        option3.setFont(font);
-        option3.setString("3 - Hard 16x16 45m");
-        option3.setCharacterSize(35);
-        option3.setFillColor(sf::Color::Red);
-        option3.setPosition(390, 420);
-        window.draw(option3);
 
         /*  sf::Text placeholder;
          option3.setFont(font);
@@ -406,8 +396,7 @@ private:
         window.clear(sf::Color(0, 0, 0));
 
         drawHud();
-        sf::Font font;
-        font.loadFromFile("C:/Windows/fonts/arial.ttf");
+
 
         //generowanie mapy
         int cellsize = 40;
@@ -440,13 +429,12 @@ private:
                 //RYSOWANIE LICZBY MIN OBOK
                 if(map[r][c].revealed && !map[r][c].mine && map[r][c].nearMines > 0)
                 {
-                    sf::Text number;
-                    number.setFont(font);
-                    number.setString(std::to_string(map[r][c].nearMines));
-                    number.setCharacterSize(24);
-                    number.setFillColor(sf::Color::Blue);
-                    number.setPosition(startX +c * cellsize + cellsize *0.35f, startY +r * cellsize + cellsize *0.12f );
-                    window.draw(number);
+                    drawText(
+                    std::to_string(map[r][c].nearMines),
+                    startX +c * cellsize + cellsize *0.35f, startY +r * cellsize + cellsize *0.12f ,
+                    24,
+                    sf::Color::Blue
+                        );
                 }
                 //RYSOWANIE FLAG
                 if(!map[r][c].revealed && map[r][c].flagged)
@@ -465,30 +453,20 @@ private:
         player.setOutlineColor(playerOutline);
         player.setOutlineThickness(5);
         window.draw(player);
-
+        //Draw hud po win/loss
         if(loss){
-            sf::Text text;
-            text.setFont(font);
-            text.setString("Przegrana - R restart, ESC menu");
-            text.setCharacterSize(35);
-            text.setFillColor(sf::Color::Red);
-            text.setPosition(330, 80);
-            window.draw(text);
+            drawText("Przegrana - R restart, ESC menu", 330, 100, 35, sf::Color::Red);
         }
+
+
         if(win){
-            sf::Text text;
-            text.setFont(font);
-            text.setString("Wygrana - R restart, ESC menu");
-            text.setCharacterSize(35);
-            text.setFillColor(sf::Color::Green);
-            text.setPosition(330, 80);
-            window.draw(text);
+            drawText("Wygrana - R restart, ESC menu", 330, 100, 35, sf::Color::Green);
         }
         window.display();
     }
 
 };
-//Menu i ustawienia
+
 
 
 
