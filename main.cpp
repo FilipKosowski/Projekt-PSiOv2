@@ -282,6 +282,7 @@ private:
             fontLoaded = true;
         }
     }
+
     void drawLine(float x1, float y1, float x2, float y2, sf::Color color, float thickness = 1.0f) {
         sf::Vector2f p1(x1, y1);
         sf::Vector2f p2(x2, y2);
@@ -329,6 +330,39 @@ private:
         float y = static_cast<float>(boardY() + playerRow * size);
         drawSoldierIcon(x, y, static_cast<float>(size));
     }
+    void drawBackground()
+    {
+        sf::RectangleShape sky(sf::Vector2f(WINDOW_WIDTH, 120));
+        sky.setPosition(0, 0);
+        sky.setFillColor(sf::Color(37, 43, 39));
+        window.draw(sky);
+
+        sf::RectangleShape ground(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT - 120));
+        ground.setPosition(0, 120);
+        ground.setFillColor(sf::Color(37, 45, 28));
+        window.draw(ground);
+
+        for(int i = 0; i < 12; i++){
+            sf::CircleShape smoke(35.0f + i * 2.0f);
+            smoke.setPosition(
+                60.0f + i * 95.0f,
+                35.0f + (i % 3) * 18.0f
+                );
+            smoke.setFillColor(sf::Color(70, 72, 68, 70));
+            window.draw(smoke);
+        }
+
+        for(int i = 0; i < 18; i++){
+            sf::CircleShape dirt(14.0f + (i % 4) * 5.0f);
+            dirt.setPosition(
+                static_cast<float>((i * 73) % WINDOW_WIDTH),
+                160.0f + static_cast<float>((i * 41) % 560)
+                );
+            dirt.setFillColor(sf::Color(55, 48, 35, 80));
+            window.draw(dirt);
+        }
+    }
+
     void drawText(const std::string& text, float x, float y, int size, sf::Color color){
         if(!fontLoaded){
             return;
@@ -343,10 +377,46 @@ private:
 
         window.draw(t);
     }
+    void drawCenteredText(const std::string& text, float y, int size, sf::Color color) {
+        if (!fontLoaded) return;
+        sf::Text t;
+        t.setFont(font);
+        t.setString(text);
+        t.setCharacterSize(size);
+        t.setFillColor(color);
+        sf::FloatRect b = t.getLocalBounds();
+        t.setPosition((WINDOW_WIDTH - b.width) / 2.0f - b.left, y);
+        window.draw(t);
+    }
+    void drawEndScreen(bool win) {
+        sf::RectangleShape overlay(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
+        overlay.setFillColor(sf::Color(0, 0, 0, 155));
+        window.draw(overlay);
+
+        sf::RectangleShape box(sf::Vector2f(640, 250));
+        box.setPosition(270, 285);
+        box.setFillColor(win ? sf::Color(42, 85, 42, 245) : sf::Color(90, 28, 24, 245));
+        box.setOutlineThickness(5);
+        box.setOutlineColor(sf::Color(230, 211, 140));
+        window.draw(box);
+
+        if (win) {
+            drawCenteredText("MISJA WYKONANA", 323, 46, sf::Color(229, 255, 211));
+            drawCenteredText("Teren zostal oczyszczony", 382, 24, sf::Color(235, 235, 225));
+        } else {
+            drawCenteredText("MISJA NIEUDANA", 323, 46, sf::Color(255, 210, 205));
+            drawCenteredText("Zolnierz trafil na mine", 382, 24, sf::Color(235, 235, 225));
+        }
+
+        drawCenteredText("Czas: " + std::to_string(static_cast<int>(finalTime)) + " s", 430, 26, sf::Color(255, 225, 145));
+        drawCenteredText("R - restart     ENTER / ESC - menu", 478, 23, sf::Color(235, 235, 225));
+    }
+
     void drawHud(){
+        drawLine(0,86, WINDOW_WIDTH, 86, sf::Color(160,140,80), 4);
         sf::RectangleShape panel(sf::Vector2f(WINDOW_WIDTH, 90));
         panel.setPosition(0, 0);
-        panel.setFillColor(sf::Color(25, 25, 25));
+        panel.setFillColor(sf::Color(25, 25, 25, 220));
         window.draw(panel);
 
         drawText("SAPER", 30, 20, 36, sf::Color::White);
@@ -494,7 +564,7 @@ private:
         }
 
         window.clear(sf::Color(0, 0, 0));
-
+        drawBackground();
         drawHud();
 
 
@@ -568,17 +638,9 @@ private:
             }
         }
         //draw player
-
         drawSoldier();
-        //Draw hud po win/loss
-        if(loss){
-            drawText("Przegrana - R restart, ESC menu", 330, 100, 35, sf::Color::Red);
-        }
-
-
-        if(win){
-            drawText("Wygrana - R restart, ESC menu", 330, 100, 35, sf::Color::Green);
-        }
+        if(state !=game)
+               drawEndScreen(win);
         window.display();
     }
 
