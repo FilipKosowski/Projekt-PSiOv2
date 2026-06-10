@@ -8,6 +8,7 @@
 #include <queue>
 #include <cmath>
 #include <sstream>
+#include <fstream>
 
 
 
@@ -153,6 +154,7 @@ private:
     bool levelgenerated = false;
     bool loss = false;
     bool win = false;
+    bool resultSaved = false;
 
 
     std::vector<Difficultylvl> lvls = {
@@ -187,6 +189,7 @@ public:
         loss = false;
         win = false;
         levelgenerated = false;
+        resultSaved = false;
 
         timerStarted = false;
         finalTime = 0.0f;
@@ -198,6 +201,48 @@ public:
         map = m;
     }
 private:
+    int boardY()
+    {
+        return 120;
+    }
+    int boardX()
+    {
+        int boardWidth = level.cols * cellSize();
+        return (WINDOW_WIDTH - boardWidth) / 2;
+    }
+    int cellSize()
+    {
+        int sizeWidth = (WINDOW_HEIGHT - 90) / level.cols;
+        int sizeHeight = (WINDOW_WIDTH - 70) / level.rows;
+
+        int size = std::min(40, std::min(sizeWidth, sizeHeight));
+
+        return size;
+    }
+    void saveResult(bool playerWon)
+    {
+        if(resultSaved){
+            return;
+        }
+        resultSaved= true;
+
+        std::ofstream file("wyniki.txt", std::ios::app);
+
+        if(!file.is_open()){
+            return;
+        }
+
+        if(playerWon){
+            file << "Wygrana";
+        }
+        else{
+            file<< "Przegrana";
+        }
+        file <<" | Tryb: "<< level.name;
+        file <<" | Czas: "<< static_cast<int>(finalTime)<<" s";
+        file <<"\n";
+        file.close();
+    }
     float currentTime()
     {
         if(!timerStarted){
@@ -273,6 +318,7 @@ private:
 
         drawText("R - restart", 850, 20, 20, sf::Color::White);
         drawText("ESC - menu", 850, 50, 20, sf::Color::White);
+        drawText("Wyniki zapisuja sie do wyniki.txt", 850, 70, 15, sf::Color::Yellow);
 
         drawText("Space - reveal  F - flag", 990, 35, 17, sf::Color::Yellow);
     }
@@ -340,6 +386,7 @@ private:
                             state = lost;
                             finalTime = currentTime();
                             revealAllMines();
+                            saveResult(false);
                         }
                         else {
                             floodReveal(map, level, playerRow, playerCol);
@@ -350,6 +397,7 @@ private:
                         win = true;
                         state = won;
                         finalTime = currentTime();
+                        saveResult(true);
                     }
                 }
                 // flagowanie pol
@@ -401,9 +449,9 @@ private:
 
 
         //generowanie mapy
-        int cellsize = 40;
-        int startX = 350;
-        int startY = 150;
+        int cellsize = cellSize();
+        int startX = boardX();
+        int startY = boardY();
 
 
         for(int r =0; r < level.rows; r++) {
