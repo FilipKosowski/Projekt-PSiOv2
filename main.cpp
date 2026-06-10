@@ -8,6 +8,9 @@
 #include <queue>
 #include <cmath>
 #include <sstream>
+#include <fstream>
+
+
 
 const int WINDOW_WIDTH = 1180;
 const int WINDOW_HEIGHT = 820;
@@ -19,9 +22,11 @@ enum GameState{
 
 
 //colory
-sf::Color TileColor(70, 190 ,100);
-sf::Color TileColorR(70, 90 ,100);
-sf::Color TileOutline(255 ,255,255);
+sf::Color TileColor(69, 90 ,51);
+sf::Color TileColor2(59, 78 ,45);
+sf::Color TileColorR(156, 137 ,92);
+sf::Color TileColorR2(168, 150 ,103);
+sf::Color TileOutline(32 ,38,27);
 sf::Color playerOutline(0, 0, 80);
 
 struct Cell {
@@ -81,7 +86,7 @@ void generateBoard(std::vector<std::vector<Cell>>& map, const Difficultylvl& lev
             }
         }
     }
-
+    //random
     std::random_device rd;
     std::mt19937 rng(rd());
     std::shuffle(positions.begin(), positions.end(), rng);
@@ -151,6 +156,7 @@ private:
     bool levelgenerated = false;
     bool loss = false;
     bool win = false;
+    bool resultSaved = false;
 
 
     std::vector<Difficultylvl> lvls = {
@@ -185,17 +191,61 @@ public:
         loss = false;
         win = false;
         levelgenerated = false;
+        resultSaved = false;
 
         timerStarted = false;
         finalTime = 0.0f;
 
         state = game;
     }
-
+    // po co to?
     void setMap(const std::vector<std::vector<Cell>>& m){
         map = m;
     }
 private:
+
+    int boardY()
+    {
+        return 120;
+    }
+    int boardX()
+    {
+        int boardWidth = level.cols * cellSize();
+        return (WINDOW_WIDTH - boardWidth) / 2;
+    }
+    int cellSize()
+    {
+        int sizeWidth = (WINDOW_HEIGHT - 90) / level.cols;
+        int sizeHeight = (WINDOW_WIDTH - 70) / level.rows;
+
+        int size = std::min(40, std::min(sizeWidth, sizeHeight));
+
+        return size;
+    }
+    void saveResult(bool playerWon)
+    {
+        if(resultSaved){
+            return;
+        }
+        resultSaved= true;
+
+        std::ofstream file("wyniki.txt", std::ios::app);
+
+        if(!file.is_open()){
+            return;
+        }
+
+        if(playerWon){
+            file << "Wygrana";
+        }
+        else{
+            file<< "Przegrana";
+        }
+        file <<" | Tryb: "<< level.name;
+        file <<" | Czas: "<< static_cast<int>(finalTime)<<" s";
+        file <<"\n";
+        file.close();
+    }
     float currentTime()
     {
         if(!timerStarted){
@@ -203,6 +253,16 @@ private:
         }
 
         return gameClock.getElapsedTime().asSeconds();
+    }
+    void revealAllMines(){
+        for(int r = 0; r < level.rows; r ++){
+            for(int c =0; c <level.cols; c ++){
+                if(map[r][c].mine){
+                    map[r][c].revealed = true;
+                }
+            }
+        }
+
     }
     int flagCount(){
         int counter =0;
@@ -218,9 +278,56 @@ private:
     }
     void loadFont()
     {
-        if(font.loadFromFile("C:/Windows/Fonts/arial.tft")){
+        if(font.loadFromFile("C:/Windows/Fonts/arial.ttf")){
             fontLoaded = true;
         }
+    }
+    void drawLine(float x1, float y1, float x2, float y2, sf::Color color, float thickness = 1.0f) {
+        sf::Vector2f p1(x1, y1);
+        sf::Vector2f p2(x2, y2);
+        sf::Vector2f d = p2 - p1;
+        float len = std::sqrt(d.x * d.x + d.y * d.y);
+        if (len == 0) return;
+        sf::RectangleShape line(sf::Vector2f(len, thickness));
+        line.setOrigin(0, thickness / 2.0f);
+        line.setPosition(p1);
+        line.setRotation(std::atan2(d.y, d.x) * 180.0f / 3.14159f);
+        line.setFillColor(color);
+        window.draw(line);
+    }
+
+    void drawSoldierIcon(float x, float y, float size) {
+        sf::CircleShape head(size * 0.14f);
+        head.setOrigin(size * 0.14f, size * 0.14f);
+        head.setPosition(x + size * 0.5f, y + size * 0.28f);
+        head.setFillColor(sf::Color(217, 183, 132));
+        window.draw(head);
+
+        sf::CircleShape helmet(size * 0.18f, 20);
+        helmet.setScale(1.35f, 0.65f);
+        helmet.setOrigin(size * 0.18f, size * 0.18f);
+        helmet.setPosition(x + size * 0.5f, y + size * 0.19f);
+        helmet.setFillColor(sf::Color(45, 75, 38));
+        window.draw(helmet);
+
+        sf::RectangleShape body(sf::Vector2f(size * 0.36f, size * 0.34f));
+        body.setOrigin(size * 0.18f, size * 0.17f);
+        body.setPosition(x + size * 0.5f, y + size * 0.58f);
+        body.setFillColor(sf::Color(53, 86, 43));
+        body.setOutlineThickness(1);
+        body.setOutlineColor(sf::Color(25, 40, 24));
+        window.draw(body);
+
+        drawLine(x + size * 0.66f, y + size * 0.47f, x + size * 0.92f, y + size * 0.37f, sf::Color(40, 30, 20), size * 0.05f);
+        drawLine(x + size * 0.38f, y + size * 0.76f, x + size * 0.34f, y + size * 0.96f, sf::Color(35, 50, 32), size * 0.08f);
+        drawLine(x + size * 0.58f, y + size * 0.76f, x + size * 0.66f, y + size * 0.96f, sf::Color(35, 50, 32), size * 0.08f);
+    }
+
+    void drawSoldier() {
+        int size = cellSize();
+        float x = static_cast<float>(boardX() + playerCol * size);
+        float y = static_cast<float>(boardY() + playerRow * size);
+        drawSoldierIcon(x, y, static_cast<float>(size));
     }
     void drawText(const std::string& text, float x, float y, int size, sf::Color color){
         if(!fontLoaded){
@@ -242,7 +349,28 @@ private:
         panel.setFillColor(sf::Color(25, 25, 25));
         window.draw(panel);
 
-        ///Dokoncze pozniej
+        drawText("SAPER", 30, 20, 36, sf::Color::White);
+
+        drawText("Level: " + level.name, 230, 30, 24, sf::Color::White);
+
+        int shownTime;
+
+        if(loss || win){
+            shownTime = static_cast<int>(finalTime);
+        }
+        else{
+            shownTime = static_cast<int>(currentTime());
+        }
+        drawText("Time: " + std::to_string(shownTime) + " s", 450, 30, 24, sf::Color::White);
+
+        int minesLeft = level.mines - flagCount();
+        drawText("Mines: " + std::to_string(minesLeft), 650, 30, 24, sf::Color::White);
+
+        drawText("R - restart", 850, 20, 20, sf::Color::White);
+        drawText("ESC - menu", 850, 50, 20, sf::Color::White);
+        drawText("Wyniki zapisuja sie do wyniki.txt", 850, 70, 15, sf::Color::Yellow);
+
+        drawText("Space - reveal  F - flag", 990, 35, 17, sf::Color::Yellow);
     }
     void handleEvents(){
         sf::Event event {};
@@ -256,12 +384,13 @@ private:
                     if(event.key.code == sf::Keyboard::Num1) setDif(lvls[0]);
                     if(event.key.code == sf::Keyboard::Num2) setDif(lvls[1]);
                     if(event.key.code == sf::Keyboard::Num3) setDif(lvls[2]);
+                    // zamykanie aplikacji pod escape
+                    if(event.key.code == sf::Keyboard::Escape) window.close();
                     return;
                 }
-                if(state != game){
-                    return;
-                }
-                if(loss || win){ // reset gamu
+                // funkcje do restartu lub wyjscia po state != game
+                if(state == lost || state == won){
+
                     if(event.key.code == sf::Keyboard::R){
                         setDif(level);
                     }
@@ -270,7 +399,10 @@ private:
                     }
 
                     return;
-                } // ruchy podczas gry
+                }
+                if(state != game){
+                    return;
+                }              // ruchy podczas gry
                 if((event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A) && playerCol > 0) {
                     playerCol--;
                 }
@@ -296,21 +428,26 @@ private:
 
                     Cell& s = map[playerRow][playerCol];
 
-
+                    // Miny i odkrywanie
                     if(!s.revealed && !s.flagged){
                         if(s.mine){
                             s.revealed = true;
                             loss = true;
+                            state = lost;
                             finalTime = currentTime();
+                            revealAllMines();
+                            saveResult(false);
                         }
                         else {
                             floodReveal(map, level, playerRow, playerCol);
                         }
                     }
-
+                    // win state set
                     if(isWin(map, level)){
                         win = true;
+                        state = won;
                         finalTime = currentTime();
+                        saveResult(true);
                     }
                 }
                 // flagowanie pol
@@ -331,41 +468,14 @@ private:
 
         window.clear(sf::Color(20,20,20));
 
-        sf::Font font;
-        font.loadFromFile("C:/Windows/fonts/arial.ttf");
 
+        drawText("SAPER", 470, 120, 70, sf::Color::White);
+        drawText("1 - Easy 9x9 10m" , 390, 280, 35, sf::Color::Green);
+        drawText("2 - Medium 9x9 10m" , 390, 350, 35, sf::Color::Yellow);
+        drawText("3 - Hard 9x9 10m" , 390, 420, 35, sf::Color::Red);
 
-        sf::Text title;
-        title.setFont(font);
-        title.setString("SAPER MENU");
-        title.setCharacterSize(70);
-        title.setFillColor(sf::Color::White);
-        title.setPosition(470, 120);
-        window.draw(title);
+        drawText("Wybierz poziom trudnosci uzywajac klawiatuyr", 395, 530, 25, sf::Color::White);
 
-        sf::Text option1;
-        option1.setFont(font);
-        option1.setString("1 - Easy 9x9 10m");
-        option1.setCharacterSize(35);
-        option1.setFillColor(sf::Color::Green);
-        option1.setPosition(390, 280);
-        window.draw(option1);
-
-        sf::Text option2;
-        option2.setFont(font);
-        option2.setString("2 - Medium 12x12 25m");
-        option2.setCharacterSize(35);
-        option2.setFillColor(sf::Color::Yellow);
-        option2.setPosition(390, 350);
-        window.draw(option2);
-
-        sf::Text option3;
-        option3.setFont(font);
-        option3.setString("3 - Hard 16x16 45m");
-        option3.setCharacterSize(35);
-        option3.setFillColor(sf::Color::Red);
-        option3.setPosition(390, 420);
-        window.draw(option3);
 
         /*  sf::Text placeholder;
          option3.setFont(font);
@@ -384,25 +494,47 @@ private:
         }
 
         window.clear(sf::Color(0, 0, 0));
-        sf::Font font;
-        font.loadFromFile("C:/Windows/fonts/arial.ttf");
+
+        drawHud();
+
 
         //generowanie mapy
-        int cellsize = 40;
-        int startX = 350;
-        int startY = 150;
+        int cellsize = cellSize();
+        int startX = boardX();
+        int startY = boardY();
 
+        //generowanie ramki
+        sf::RectangleShape boardFrame(
+            sf::Vector2f(level.cols * cellsize + 20, level.rows * cellsize + 20)
+            );
+        boardFrame.setPosition(startX -10, startY- 10);
+        boardFrame.setFillColor(sf::Color(35,35,35));
+        boardFrame.setOutlineColor(sf::Color(160,160,160));
+        boardFrame.setOutlineThickness(4);
+        window.draw(boardFrame);
 
+        //generowanie planszy
         for(int r =0; r < level.rows; r++) {
             for (int c = 0; c < level.cols; c++){
                 sf::RectangleShape tile(sf::Vector2f(cellsize -2, cellsize -2));
                 tile.setPosition(startX + c * cellsize, startY + r *cellsize);
 
                 if(map[r][c].revealed){
+                    if((r+c)% 2 == 0){
                     tile.setFillColor(TileColorR);
+                    }
+                    else{
+                    tile.setFillColor(TileColorR2);
+                    }
                 }
-                else  tile.setFillColor(TileColor);
-
+                else{
+                    if((r+c)% 2 == 0){
+                        tile.setFillColor(TileColor);
+                    }
+                    else{
+                        tile.setFillColor(TileColor2);
+                    }
+                }
                 tile.setOutlineThickness(1);
                 tile.setOutlineColor(TileOutline);
                 window.draw(tile);
@@ -418,13 +550,12 @@ private:
                 //RYSOWANIE LICZBY MIN OBOK
                 if(map[r][c].revealed && !map[r][c].mine && map[r][c].nearMines > 0)
                 {
-                    sf::Text number;
-                    number.setFont(font);
-                    number.setString(std::to_string(map[r][c].nearMines));
-                    number.setCharacterSize(24);
-                    number.setFillColor(sf::Color::Blue);
-                    number.setPosition(startX +c * cellsize + cellsize *0.35f, startY +r * cellsize + cellsize *0.12f );
-                    window.draw(number);
+                    drawText(
+                    std::to_string(map[r][c].nearMines),
+                    startX +c * cellsize + cellsize *0.35f, startY +r * cellsize + cellsize *0.12f ,
+                    24,
+                    sf::Color::Blue
+                        );
                 }
                 //RYSOWANIE FLAG
                 if(!map[r][c].revealed && map[r][c].flagged)
@@ -437,36 +568,22 @@ private:
             }
         }
         //draw player
-        sf::RectangleShape player(sf::Vector2f(cellsize-4, cellsize -4));
-        player.setPosition( startX + playerCol * cellsize +1, startY + playerRow * cellsize +1);
-        player.setFillColor(sf::Color::Transparent);
-        player.setOutlineColor(playerOutline);
-        player.setOutlineThickness(5);
-        window.draw(player);
 
+        drawSoldier();
+        //Draw hud po win/loss
         if(loss){
-            sf::Text text;
-            text.setFont(font);
-            text.setString("Przegrana - R restart, ESC menu");
-            text.setCharacterSize(35);
-            text.setFillColor(sf::Color::Red);
-            text.setPosition(330, 80);
-            window.draw(text);
+            drawText("Przegrana - R restart, ESC menu", 330, 100, 35, sf::Color::Red);
         }
+
+
         if(win){
-            sf::Text text;
-            text.setFont(font);
-            text.setString("Wygrana - R restart, ESC menu");
-            text.setCharacterSize(35);
-            text.setFillColor(sf::Color::Green);
-            text.setPosition(330, 80);
-            window.draw(text);
+            drawText("Wygrana - R restart, ESC menu", 330, 100, 35, sf::Color::Green);
         }
         window.display();
     }
 
 };
-//Menu i ustawienia
+
 
 
 
