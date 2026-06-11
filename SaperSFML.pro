@@ -4,6 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
+        SaperGame.cpp \
         main.cpp
 
 INCLUDEPATH += "C:/SFML-2.5.1/include"
@@ -14,3 +15,9 @@ CONFIG(debug, debug|release){
 } else {
     LIBS += -lsfml-audio -lsfml-graphics -lsfml-network -lsfml-system -lsfml-window
 }
+
+HEADERS += \
+    SaperGame.h
+
+DISTFILES += \
+    CMakeLists.txt
