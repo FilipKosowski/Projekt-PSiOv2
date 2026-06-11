@@ -39,13 +39,39 @@ struct Cell {
     int nearMines = 0;
 };
 
-struct Difficultylvl {
-    std::string name;
-    int rows;
-    int cols;
-    int mines;
+class DifficultyLevel {
+public:
+    virtual ~DifficultyLevel() = default;
+
+    virtual std::string name() const = 0;
+    virtual int rows() const = 0;
+    virtual int cols() const = 0;
+    virtual int mines() const = 0;
 };
 
+class EasyLevel : public DifficultyLevel {
+public:
+    std::string name() const override { return "Easy"; }
+    int rows() const override { return 9; }
+    int cols() const override { return 9; }
+    int mines() const override { return 10; }
+};
+
+class MediumLevel : public DifficultyLevel {
+public:
+    std::string name() const override { return "Medium"; }
+    int rows() const override { return 12; }
+    int cols() const override { return 12; }
+    int mines() const override { return 25; }
+};
+
+class HardLevel : public DifficultyLevel {
+public:
+    std::string name() const override { return "Hard"; }
+    int rows() const override { return 16; }
+    int cols() const override { return 16; }
+    int mines() const override { return 45; }
+};
 
 //aby pierwszy ruch byl safe
 bool isinside(int r, int c, const Difficultylvl& level)
@@ -100,7 +126,7 @@ void generateBoard(std::vector<std::vector<Cell>>& map, const Difficultylvl& lev
 
     tempnamenvm(map, level);
 }
-
+//Jedna z najważniejszych funckji jeżeli chodzi o logike gry, odkrywa pola które nie mają żadnych min obok siebie
 void floodReveal(std::vector<std::vector<Cell>>& map, const Difficultylvl& level, int row, int col)
 {
     std::queue<std::pair<int, int>> q;
@@ -127,7 +153,7 @@ void floodReveal(std::vector<std::vector<Cell>>& map, const Difficultylvl& level
     }
 }
 
-
+// Funckja sprawdajaca czy wszyskie pola bez miny zostaly odkryte
 bool isWin(const std::vector<std::vector<Cell>>& map, const Difficultylvl& level){
     for (int r = 0; r < level.rows; r ++){
         for(int c = 0; c <level.cols; c ++){
@@ -222,7 +248,7 @@ private:
     void update(float dt) {
         if (state == lost) explosionTime += dt;
     }
-
+    // funckja do wybeirania opcji menu myszka
     void handleMenuMouse(int mouseX, int mouseY) {
         for (int i = 0; i < 3; i++) {
             if (menuButtonRect(i).contains(static_cast<float>(mouseX), static_cast<float>(mouseY))) {
@@ -230,6 +256,7 @@ private:
             }
         }
     }
+    //Tworzenie dziewkow
     void createSounds() {
         const unsigned sampleRate = 44100;
         std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)));
@@ -253,7 +280,7 @@ private:
         winBuffer.loadFromSamples(winSamples.data(), winSamples.size(), 1, sampleRate);
         winSound.setBuffer(winBuffer);
     }
-
+    //Wspolrzedne do rysowania
     int boardY()
     {
         return 120;
@@ -263,6 +290,7 @@ private:
         int boardWidth = level.cols * cellSize();
         return (WINDOW_WIDTH - boardWidth) / 2;
     }
+
     int cellSize()
     {
         int sizeWidth = (WINDOW_HEIGHT - 90) / level.cols;
@@ -695,8 +723,6 @@ private:
         drawCenteredText("SAPER", 86, 70, sf::Color(236, 222, 162));
         drawCenteredText("OPERACJA MINOWA", 154, 30, sf::Color(201, 214, 164));
 
-        // drawWarDecorationLeft();
-        //drawWarDecorationRight();
 
         drawCenteredText("WYBIERZ TRYB MISJI", 255, 28, sf::Color(230, 230, 220));
 
@@ -757,7 +783,7 @@ private:
 
 
 
-        //generowanie mapy
+        // stale do generowania mapy itp.
         int cellsize = cellSize();
         int startX = boardX();
         int startY = boardY();
@@ -829,7 +855,9 @@ private:
         //draw player
         drawSoldier();
 
-        if(state == lost)           drawExplosion();
+        // animacja po przegranej
+        if(state == lost) drawExplosion();
+        // wyswietlanie ekranu koncowego
         if(state !=game)
             drawEndScreen(win);
         window.display();
@@ -839,9 +867,7 @@ private:
 
 
 
-
-
-
+//Ukrywanie klasy aby nie wyswietlac jej szczegow w .h
 
 SaperGame::SaperGame()
     : impl(new SaperGameImpl())
