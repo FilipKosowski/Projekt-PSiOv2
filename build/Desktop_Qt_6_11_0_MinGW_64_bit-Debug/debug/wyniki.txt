@@ -61,3 +61,5 @@ Przegrana | Tryb: Easy | Czas: 1 s
 Przegrana | Tryb: Easy | Czas: 2 s
 Przegrana | Tryb: Easy | Czas: 2 s
 Przegrana | Tryb: Easy | Czas: 0 s
+Przegrana | Tryb: Easy | Czas: 0 s
+Przegrana | Tryb: Easy | Czas: 1 s
