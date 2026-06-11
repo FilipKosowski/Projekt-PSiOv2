@@ -12,6 +12,7 @@
 #include <sstream>
 #include <fstream>
 #include <SFML/Audio.hpp>
+#include <memory>
 
 
 
@@ -39,6 +40,7 @@ struct Cell {
     int nearMines = 0;
 };
 
+// Klasa bazowa poziomu trudnosci - tutaj jest polimorfizm
 class DifficultyLevel {
 public:
     virtual ~DifficultyLevel() = default;
@@ -49,6 +51,7 @@ public:
     virtual int mines() const = 0;
 };
 
+// Klasy pochodne - tutaj jest dziedziczenie
 class EasyLevel : public DifficultyLevel {
 public:
     std::string name() const override { return "Easy"; }
@@ -73,15 +76,16 @@ public:
     int mines() const override { return 45; }
 };
 
+
 //aby pierwszy ruch byl safe
-bool isinside(int r, int c, const Difficultylvl& level)
+bool isinside(int r, int c, const DifficultyLevel& level)
 {
-    return r >= 0 && r< level.rows && c >= 0 && c < level.cols;
+    return r >= 0 && r< level.rows() && c >= 0 && c < level.cols();
 }
 
-void tempnamenvm(std::vector<std::vector<Cell>>& map, const Difficultylvl& level){
-    for(int r = 0; r < level.rows; r++){
-        for(int c = 0; c <level.cols; c++){
+void tempnamenvm(std::vector<std::vector<Cell>>& map, const DifficultyLevel& level){
+    for(int r = 0; r < level.rows(); r++){
+        for(int c = 0; c <level.cols(); c++){
             if(map[r][c].mine) continue;
 
             int n = 0;
@@ -103,12 +107,12 @@ void tempnamenvm(std::vector<std::vector<Cell>>& map, const Difficultylvl& level
 
 }
 
-void generateBoard(std::vector<std::vector<Cell>>& map, const Difficultylvl& level, int sRow, int sCol)
+void generateBoard(std::vector<std::vector<Cell>>& map, const DifficultyLevel& level, int sRow, int sCol)
 {
     std::vector<std::pair<int, int>> positions;
 
-    for (int r = 0; r < level.rows; r++){
-        for (int c = 0; c < level.cols; c++){
+    for (int r = 0; r < level.rows(); r++){
+        for (int c = 0; c < level.cols(); c++){
             bool sZone = (std::abs(r - sRow) <= 1) && (std::abs(c - sCol) <=1);
 
             if (!sZone){ positions.push_back({r, c});
@@ -120,14 +124,14 @@ void generateBoard(std::vector<std::vector<Cell>>& map, const Difficultylvl& lev
     std::mt19937 rng(rd());
     std::shuffle(positions.begin(), positions.end(), rng);
 
-    for(int i = 0; i < level.mines && i < positions.size(); i ++){
+    for(int i = 0; i < level.mines() && i < positions.size(); i ++){
         map[positions[i].first][positions[i].second].mine = true;
     }
 
     tempnamenvm(map, level);
 }
 //Jedna z najważniejszych funckji jeżeli chodzi o logike gry, odkrywa pola które nie mają żadnych min obok siebie
-void floodReveal(std::vector<std::vector<Cell>>& map, const Difficultylvl& level, int row, int col)
+void floodReveal(std::vector<std::vector<Cell>>& map, const DifficultyLevel& level, int row, int col)
 {
     std::queue<std::pair<int, int>> q;
     q.push({row, col});
@@ -154,9 +158,9 @@ void floodReveal(std::vector<std::vector<Cell>>& map, const Difficultylvl& level
 }
 
 // Funckja sprawdajaca czy wszyskie pola bez miny zostaly odkryte
-bool isWin(const std::vector<std::vector<Cell>>& map, const Difficultylvl& level){
-    for (int r = 0; r < level.rows; r ++){
-        for(int c = 0; c <level.cols; c ++){
+bool isWin(const std::vector<std::vector<Cell>>& map, const DifficultyLevel& level){
+    for (int r = 0; r < level.rows(); r ++){
+        for(int c = 0; c <level.cols(); c ++){
             if(!map[r][c].mine && !map[r][c].revealed) {
                 return false;
             }
@@ -191,12 +195,8 @@ private:
     bool resultSaved = false;
 
 
-    std::vector<Difficultylvl> lvls = {
-        {"Easy", 9, 9, 10},
-        {"Medium", 12, 12, 25},
-        {"Hard", 16, 16, 45}
-    };
-    Difficultylvl level = lvls[0];
+    std::vector<std::unique_ptr<DifficultyLevel>> lvls;
+    DifficultyLevel* level = nullptr;
 
     sf::SoundBuffer explosionBuffer;
     sf::SoundBuffer winBuffer;
@@ -207,6 +207,12 @@ private:
 public:
     SaperGameImpl() :  window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Saper SFML"), state(menu){
         window.setFramerateLimit(60);
+
+        lvls.push_back(std::make_unique<EasyLevel>());
+        lvls.push_back(std::make_unique<MediumLevel>());
+        lvls.push_back(std::make_unique<HardLevel>());
+        level = lvls[0].get();
+
         loadFont();
         createSounds();
     }
@@ -219,10 +225,10 @@ public:
             draw();
         }
     }
-    void setDif(const Difficultylvl& l){
+    void setDif(DifficultyLevel* l){
         level = l;
         //map.clear();
-        map = std::vector<std::vector<Cell>>(level.rows, std::vector<Cell>(level.cols));
+        map = std::vector<std::vector<Cell>>(level->rows(), std::vector<Cell>(level->cols()));
         playerRow = 0;
         playerCol = 0;
 
@@ -252,11 +258,11 @@ private:
     void handleMenuMouse(int mouseX, int mouseY) {
         for (int i = 0; i < 3; i++) {
             if (menuButtonRect(i).contains(static_cast<float>(mouseX), static_cast<float>(mouseY))) {
-                setDif(lvls[i]);
+                setDif(lvls[i].get());
             }
         }
     }
-    //Tworzenie dziewkow
+    //Tworzenie dziekow
     void createSounds() {
         const unsigned sampleRate = 44100;
         std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)));
@@ -287,14 +293,14 @@ private:
     }
     int boardX()
     {
-        int boardWidth = level.cols * cellSize();
+        int boardWidth = level->cols() * cellSize();
         return (WINDOW_WIDTH - boardWidth) / 2;
     }
 
     int cellSize()
     {
-        int sizeWidth = (WINDOW_HEIGHT - 90) / level.cols;
-        int sizeHeight = (WINDOW_WIDTH - 70) / level.rows;
+        int sizeWidth = (WINDOW_HEIGHT - 90) / level->cols();
+        int sizeHeight = (WINDOW_WIDTH - 70) / level->rows();
 
         int size = std::min(40, std::min(sizeWidth, sizeHeight));
 
@@ -319,7 +325,7 @@ private:
         else{
             file<< "Przegrana";
         }
-        file <<" | Tryb: "<< level.name;
+        file <<" | Tryb: "<< level->name();
         file <<" | Czas: "<< static_cast<int>(finalTime)<<" s";
         file <<"\n";
         file.close();
@@ -333,8 +339,8 @@ private:
         return gameClock.getElapsedTime().asSeconds();
     }
     void revealAllMines(){
-        for(int r = 0; r < level.rows; r ++){
-            for(int c =0; c <level.cols; c ++){
+        for(int r = 0; r < level->rows(); r ++){
+            for(int c =0; c <level->cols(); c ++){
                 if(map[r][c].mine){
                     map[r][c].revealed = true;
                 }
@@ -345,8 +351,8 @@ private:
     int flagCount(){
         int counter =0;
 
-        for(int r =0; r < level.rows; r++){
-            for(int c = 0; c < level.cols; c++){
+        for(int r =0; r < level->rows(); r++){
+            for(int c = 0; c < level->cols(); c++){
                 if(map[r][c].flagged){
                     counter++;
                 }
@@ -480,6 +486,7 @@ private:
             window.draw(dirt);
         }
     }
+     //funckje pomocnicza to pisania textu
     void drawTextInRect(const std::string& text, const sf::FloatRect& rect, int size, sf::Color color) {
         if (!fontLoaded) return;
         sf::Text t;
@@ -518,6 +525,7 @@ private:
         t.setPosition((WINDOW_WIDTH - b.width) / 2.0f - b.left, y);
         window.draw(t);
     }
+    //ekran koncowy zaleznosci od przegranej lub wygranej
     void drawEndScreen(bool win) {
         sf::RectangleShape overlay(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
         overlay.setFillColor(sf::Color(0, 0, 0, 155));
@@ -552,7 +560,7 @@ private:
 
         drawText("SAPER", 30, 20, 36, sf::Color::White);
 
-        drawText("Level: " + level.name, 230, 30, 24, sf::Color::White);
+        drawText("Level: " + level->name(), 230, 30, 24, sf::Color::White);
 
         int shownTime;
 
@@ -564,7 +572,7 @@ private:
         }
         drawText("Time: " + std::to_string(shownTime) + " s", 450, 30, 24, sf::Color::White);
 
-        int minesLeft = level.mines - flagCount();
+        int minesLeft = level->mines() - flagCount();
         drawText("Mines: " + std::to_string(minesLeft), 650, 30, 24, sf::Color::White);
 
         drawText("R - restart", 850, 20, 20, sf::Color::White);
@@ -612,15 +620,15 @@ private:
                 window.close();
             }
 
-                if (event.type == sf::Event::MouseButtonPressed && state == menu) {
-                    handleMenuMouse(event.mouseButton.x, event.mouseButton.y);
-                }
+            if (event.type == sf::Event::MouseButtonPressed && state == menu) {
+                handleMenuMouse(event.mouseButton.x, event.mouseButton.y);
+            }
 
             if(event.type == sf::Event::KeyPressed) {
                 if(state == menu){ //MENU wybieranie
-                    if(event.key.code == sf::Keyboard::Num1) setDif(lvls[0]);
-                    if(event.key.code == sf::Keyboard::Num2) setDif(lvls[1]);
-                    if(event.key.code == sf::Keyboard::Num3) setDif(lvls[2]);
+                    if(event.key.code == sf::Keyboard::Num1) setDif(lvls[0].get());
+                    if(event.key.code == sf::Keyboard::Num2) setDif(lvls[1].get());
+                    if(event.key.code == sf::Keyboard::Num3) setDif(lvls[2].get());
                     // zamykanie aplikacji pod escape
                     if(event.key.code == sf::Keyboard::Escape) window.close();
                     return;
@@ -643,13 +651,13 @@ private:
                 if((event.key.code == sf::Keyboard::Left || event.key.code == sf::Keyboard::A) && playerCol > 0) {
                     playerCol--;
                 }
-                else if((event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D) && playerCol < level.cols - 1) {
+                else if((event.key.code == sf::Keyboard::Right || event.key.code == sf::Keyboard::D) && playerCol < level->cols() - 1) {
                     playerCol++;
                 }
                 else if((event.key.code == sf::Keyboard::Up || event.key.code == sf::Keyboard::W) && playerRow > 0) {
                     playerRow--;
                 }
-                else if((event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) && playerRow < level.rows - 1) {
+                else if((event.key.code == sf::Keyboard::Down || event.key.code == sf::Keyboard::S) && playerRow < level->rows() - 1) {
                     playerRow++;
                 }
                 if(event.key.code == sf::Keyboard::Escape){
@@ -660,7 +668,7 @@ private:
                 if(event.key.code == sf::Keyboard::Space && !loss && !win) {
 
                     if(!levelgenerated){
-                        generateBoard(map, level, playerRow, playerCol);
+                        generateBoard(map, *level, playerRow, playerCol);
                         levelgenerated = true;
 
                         timerStarted = true;
@@ -683,11 +691,11 @@ private:
 
                         }
                         else {
-                            floodReveal(map, level, playerRow, playerCol);
+                            floodReveal(map, *level, playerRow, playerCol);
                         }
                     }
                     // win state set
-                    if(isWin(map, level)){
+                    if(isWin(map, *level)){
                         win = true;
                         state = won;
                         finalTime = currentTime();
@@ -751,11 +759,11 @@ private:
             window.draw(numberBox);
             drawTextInRect(std::to_string(i + 1), sf::FloatRect(rect.left + 8, rect.top + 7, 58, 58), 32, sf::Color(255, 227, 143));
 
-            drawText(lvls[i].name, rect.left + 82, rect.top + 11, 27, sf::Color(245, 240, 220));
+            drawText(lvls[i]->name(), rect.left + 82, rect.top + 11, 27, sf::Color(245, 240, 220));
 
 
-            std::string info = std::to_string(lvls[i].rows) + "x" + std::to_string(lvls[i].cols) +
-                               "  MINY: " + std::to_string(lvls[i].mines);
+            std::string info = std::to_string(lvls[i]->rows()) + "x" + std::to_string(lvls[i]->cols()) +
+                               "  MINY: " + std::to_string(lvls[i]->mines());
             drawText(info, rect.left + 220, rect.top + 25, 18, sf::Color(255, 221, 136));
         }
 
@@ -790,7 +798,7 @@ private:
 
         //generowanie ramki
         sf::RectangleShape boardFrame(
-            sf::Vector2f(level.cols * cellsize + 20, level.rows * cellsize + 20)
+            sf::Vector2f(level->cols() * cellsize + 20, level->rows() * cellsize + 20)
             );
         boardFrame.setPosition(startX -10, startY- 10);
         boardFrame.setFillColor(sf::Color(35,35,35));
@@ -799,8 +807,8 @@ private:
         window.draw(boardFrame);
 
         //generowanie planszy
-        for(int r =0; r < level.rows; r++) {
-            for (int c = 0; c < level.cols; c++){
+        for(int r =0; r < level->rows(); r++) {
+            for (int c = 0; c < level->cols(); c++){
                 sf::RectangleShape tile(sf::Vector2f(cellsize -2, cellsize -2));
                 tile.setPosition(startX + c * cellsize, startY + r *cellsize);
 
@@ -867,7 +875,7 @@ private:
 
 
 
-//Ukrywanie klasy aby nie wyswietlac jej szczegow w .h
+//Ukrywanie klasy aby nie wyswietlac jej szczegolow w .h
 
 SaperGame::SaperGame()
     : impl(new SaperGameImpl())
